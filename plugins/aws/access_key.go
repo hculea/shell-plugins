@@ -101,10 +101,7 @@ func AccessKey() schema.CredentialType {
 			client := iam.New(sess)
 
 			s1 := rand.NewSource(time.Now().UnixNano())
-			r1 := rand.New(s1)
-
-			random := r1.Int63()
-			newUsername := fmt.Sprintf("1Password_%d", random)
+			newUsername := fmt.Sprintf("1Password_%d", rand.New(s1).Int63())
 			_, err = client.CreateUser(&iam.CreateUserInput{
 				UserName: &newUsername,
 			})
@@ -145,27 +142,27 @@ func AccessKey() schema.CredentialType {
 
 			client := iam.New(sess)
 
-			entry := in.Cache["keyid"]
-			stringu, _ := strconv.Unquote(string(entry.Data))
+			keyIDEntry := in.Cache["keyid"]
+			keyID, _ := strconv.Unquote(string(keyIDEntry.Data))
 
-			user := in.Cache["user"]
-			stringu2, _ := strconv.Unquote(string(user.Data))
+			userEntry := in.Cache["user"]
+			user, _ := strconv.Unquote(string(userEntry.Data))
 
-			_, err = client.DeleteAccessKey(&iam.DeleteAccessKeyInput{AccessKeyId: &stringu, UserName: &stringu2})
+			_, err = client.DeleteAccessKey(&iam.DeleteAccessKeyInput{AccessKeyId: &keyID, UserName: &user})
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("Successfully deleted %s access key.\n", stringu)
+			fmt.Printf("Successfully deleted %s access key.\n", keyID)
 
 			_, err = client.DeleteUser(&iam.DeleteUserInput{
-				UserName: &stringu2,
+				UserName: &user,
 			})
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("Successfully deleted %s user.\n", stringu)
+			fmt.Printf("Successfully deleted %s user.\n", user)
 			return nil
 		},
 	}
