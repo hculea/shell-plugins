@@ -2,6 +2,16 @@ package aws
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
+	"strconv"
+	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/iam"
+
 	"os"
 	"strings"
 
@@ -80,6 +90,84 @@ func AccessKey() schema.CredentialType {
 			}),
 			TryCredentialsFile(),
 		),
+		KeyGenerator: func(ctx context.Context, in sdk.ProvisionInput, out *sdk.ProvisionOutput) error {
+			sess, err := session.NewSession(&aws.Config{
+				Credentials: credentials.NewStaticCredentials(in.ItemFields[fieldname.AccessKeyID], in.ItemFields[fieldname.SecretAccessKey], ""),
+			})
+			if err != nil {
+				return err
+			}
+
+			client := iam.New(sess)
+
+			s1 := rand.NewSource(time.Now().UnixNano())
+			r1 := rand.New(s1)
+
+			random := r1.Int63()
+			newUsername := fmt.Sprintf("1Password_%d", random)
+			_, err = client.CreateUser(&iam.CreateUserInput{
+				UserName: &newUsername,
+			})
+			if err != nil {
+				return err
+			}
+			key, err := client.CreateAccessKey(&iam.CreateAccessKeyInput{UserName: &newUsername})
+			if err != nil {
+				return err
+			}
+
+			err = out.Cache.Put("user", newUsername, time.Now().Add(10*time.Hour))
+			if err != nil {
+				return err
+			}
+
+			err = out.Cache.Put("keyid", *key.AccessKey.AccessKeyId, time.Now().Add(10*time.Hour))
+			if err != nil {
+				return err
+			}
+
+			for k, v := range map[string]string{
+				"Access Key ID":     *key.AccessKey.AccessKeyId,
+				"Secret Access Key": *key.AccessKey.SecretAccessKey,
+				"Username":          *key.AccessKey.UserName,
+			} {
+				fmt.Println(k, "value is", v)
+			}
+			return nil
+		},
+		KeyRemover: func(ctx context.Context, in sdk.ProvisionInput) error {
+			sess, err := session.NewSession(&aws.Config{
+				Credentials: credentials.NewStaticCredentials(in.ItemFields[fieldname.AccessKeyID], in.ItemFields[fieldname.SecretAccessKey], ""),
+			})
+			if err != nil {
+				return err
+			}
+
+			client := iam.New(sess)
+
+			entry := in.Cache["keyid"]
+			stringu, _ := strconv.Unquote(string(entry.Data))
+
+			user := in.Cache["user"]
+			stringu2, _ := strconv.Unquote(string(user.Data))
+
+			_, err = client.DeleteAccessKey(&iam.DeleteAccessKeyInput{AccessKeyId: &stringu, UserName: &stringu2})
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Successfully deleted %s access key.\n", stringu)
+
+			_, err = client.DeleteUser(&iam.DeleteUserInput{
+				UserName: &stringu2,
+			})
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Successfully deleted %s user.\n", stringu)
+			return nil
+		},
 	}
 }
 
