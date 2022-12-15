@@ -93,6 +93,7 @@ func AccessKey() schema.CredentialType {
 		KeyGenerator: func(ctx context.Context, in sdk.ProvisionInput, out *sdk.ProvisionOutput) (map[sdk.FieldName]string, error) {
 			sess, err := session.NewSession(&aws.Config{
 				Credentials: credentials.NewStaticCredentials(in.ItemFields[fieldname.AccessKeyID], in.ItemFields[fieldname.SecretAccessKey], ""),
+				Region:      aws.String("us-west-2"),
 			})
 			if err != nil {
 				return nil, err
@@ -164,6 +165,11 @@ func AccessKey() schema.CredentialType {
 			if err != nil {
 				return err
 			}
+			groupName := "developers"
+			client.RemoveUserFromGroup(&iam.RemoveUserFromGroupInput{
+				UserName:  &user,
+				GroupName: &groupName,
+			})
 
 			fmt.Printf("Successfully deleted %s access key.\n", keyID)
 
