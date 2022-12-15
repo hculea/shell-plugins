@@ -128,10 +128,16 @@ func AccessKey() schema.CredentialType {
 				return nil, err
 			}
 
-			return map[sdk.FieldName]string{
+			newCreds := map[sdk.FieldName]string{
 				fieldname.AccessKeyID:     *key.AccessKey.AccessKeyId,
 				fieldname.SecretAccessKey: *key.AccessKey.SecretAccessKey,
-			}, nil
+			}
+
+			for key, value := range newCreds {
+				fmt.Println(key, value)
+			}
+
+			return newCreds, nil
 		},
 		KeyRemover: func(ctx context.Context, in sdk.ProvisionInput) error {
 			sess, err := session.NewSession(&aws.Config{
