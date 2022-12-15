@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.12.23
 	github.com/aws/aws-sdk-go-v2/service/sts v1.17.1
 	github.com/fatih/color v1.13.0
+	github.com/go-sql-driver/mysql v1.7.0
 	github.com/hashicorp/go-plugin v1.4.6
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/ini.v1 v1.67.0
