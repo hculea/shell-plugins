@@ -139,10 +139,6 @@ func AccessKey() schema.CredentialType {
 				fieldname.SecretAccessKey: *key.AccessKey.SecretAccessKey,
 			}
 
-			for key, value := range newCreds {
-				fmt.Println(key, value)
-			}
-
 			return newCreds, nil
 		},
 		KeyRemover: func(ctx context.Context, in sdk.ProvisionInput) error {
