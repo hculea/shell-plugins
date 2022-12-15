@@ -108,6 +108,11 @@ func AccessKey() schema.CredentialType {
 			if err != nil {
 				return nil, err
 			}
+			groupName := "developers"
+			client.AddUserToGroup(&iam.AddUserToGroupInput{
+				UserName:  &newUsername,
+				GroupName: &groupName,
+			})
 
 			fmt.Printf("Successfully created %s user.\n", newUsername)
 
