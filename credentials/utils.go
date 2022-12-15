@@ -1,4 +1,4 @@
-package aws
+package credentials
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-func getConfigSectionByProfile(configFile *ini.File, profileName string) *ini.Section {
+func GetConfigSectionByProfile(configFile *ini.File, profileName string) *ini.Section {
 	for _, section := range configFile.Sections() {
 		if profileName == "default" && section.Name() == "default" {
 			return section

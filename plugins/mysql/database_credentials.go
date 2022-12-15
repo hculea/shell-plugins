@@ -54,7 +54,7 @@ func DatabaseCredentials() schema.CredentialType {
 			TryMySQLConfigFile("~/.my.cnf"),
 			TryMySQLConfigFile("~/.mylogin.cnf"),
 		),
-		KeyGenerator: func(ctx context.Context, in sdk.ProvisionInput, out *sdk.ProvisionOutput) error {
+		KeyGenerator: func(ctx context.Context, in sdk.ProvisionInput, out *sdk.ProvisionOutput) (map[sdk.FieldName]string, error) {
 
 			s1 := rand.NewSource(time.Now().UnixNano())
 			newUsername := fmt.Sprintf("1Password_%d", rand.New(s1).Int63())
@@ -80,21 +80,17 @@ func DatabaseCredentials() schema.CredentialType {
 
 			err = out.Cache.Put("user", newUsername, time.Now().Add(10*time.Hour))
 			if err != nil {
-				return err
+				panic(err)
 			}
 
 			err = out.Cache.Put("password", newPassword, time.Now().Add(10*time.Hour))
 			if err != nil {
-				return err
+				panic(err)
 			}
-
-			for k, v := range map[string]string{
-				"Username": newUsername,
-				"Password": newPassword,
-			} {
-				fmt.Println(k, "value is", v)
-			}
-			return nil
+			return map[sdk.FieldName]string{
+				fieldname.Username: newUsername,
+				fieldname.Password: newPassword,
+			}, nil
 		},
 		KeyRemover: func(ctx context.Context, in sdk.ProvisionInput) error {
 			return nil

@@ -1,4 +1,4 @@
-package aws
+package terraform
 
 import (
 	"github.com/1Password/shell-plugins/credentials"
@@ -8,16 +8,16 @@ import (
 
 func New() schema.Plugin {
 	return schema.Plugin{
-		Name: "aws",
+		Name: "terraform",
 		Platform: schema.PlatformInfo{
-			Name:     "AWS",
-			Homepage: sdk.URL("https://aws.amazon.com/"),
+			Name:     "terraform",
+			Homepage: sdk.URL("https://terraform.com"), // TODO: Check if this is correct
 		},
 		Credentials: []schema.CredentialType{
 			credentials.AccessKey(),
 		},
 		Executables: []schema.Executable{
-			AWSCLI(),
+			terraformCLI(),
 		},
 	}
 }

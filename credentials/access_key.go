@@ -1,4 +1,4 @@
-package aws
+package credentials
 
 import (
 	"context"
@@ -72,7 +72,7 @@ func AccessKey() schema.CredentialType {
 		},
 		DefaultProvisioner: AWSProvisioner(),
 		Importer: importer.TryAll(
-			importer.TryEnvVarPair(defaultEnvVarMapping),
+			importer.TryEnvVarPair(DefaultEnvVarMapping),
 			importer.TryEnvVarPair(map[string]sdk.FieldName{
 				"AMAZON_ACCESS_KEY_ID":     fieldname.AccessKeyID,
 				"AMAZON_SECRET_ACCESS_KEY": fieldname.SecretAccessKey,
@@ -90,12 +90,12 @@ func AccessKey() schema.CredentialType {
 			}),
 			TryCredentialsFile(),
 		),
-		KeyGenerator: func(ctx context.Context, in sdk.ProvisionInput, out *sdk.ProvisionOutput) error {
+		KeyGenerator: func(ctx context.Context, in sdk.ProvisionInput, out *sdk.ProvisionOutput) (map[sdk.FieldName]string, error) {
 			sess, err := session.NewSession(&aws.Config{
 				Credentials: credentials.NewStaticCredentials(in.ItemFields[fieldname.AccessKeyID], in.ItemFields[fieldname.SecretAccessKey], ""),
 			})
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			client := iam.New(sess)
@@ -106,31 +106,32 @@ func AccessKey() schema.CredentialType {
 				UserName: &newUsername,
 			})
 			if err != nil {
-				return err
+				return nil, err
 			}
+
+			fmt.Printf("Successfully created %s user.\n", newUsername)
+
 			key, err := client.CreateAccessKey(&iam.CreateAccessKeyInput{UserName: &newUsername})
 			if err != nil {
-				return err
+				return nil, err
 			}
+
+			fmt.Printf("Successfully created %s access key.\n", *key.AccessKey.AccessKeyId)
 
 			err = out.Cache.Put("user", newUsername, time.Now().Add(10*time.Hour))
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			err = out.Cache.Put("keyid", *key.AccessKey.AccessKeyId, time.Now().Add(10*time.Hour))
 			if err != nil {
-				return err
+				return nil, err
 			}
 
-			for k, v := range map[string]string{
-				"Access Key ID":     *key.AccessKey.AccessKeyId,
-				"Secret Access Key": *key.AccessKey.SecretAccessKey,
-				"Username":          *key.AccessKey.UserName,
-			} {
-				fmt.Println(k, "value is", v)
-			}
-			return nil
+			return map[sdk.FieldName]string{
+				fieldname.AccessKeyID:     *key.AccessKey.AccessKeyId,
+				fieldname.SecretAccessKey: *key.AccessKey.SecretAccessKey,
+			}, nil
 		},
 		KeyRemover: func(ctx context.Context, in sdk.ProvisionInput) error {
 			sess, err := session.NewSession(&aws.Config{
@@ -168,7 +169,7 @@ func AccessKey() schema.CredentialType {
 	}
 }
 
-var defaultEnvVarMapping = map[string]sdk.FieldName{
+var DefaultEnvVarMapping = map[string]sdk.FieldName{
 	"AWS_ACCESS_KEY_ID":     fieldname.AccessKeyID,
 	"AWS_SECRET_ACCESS_KEY": fieldname.SecretAccessKey,
 	"AWS_DEFAULT_REGION":    fieldname.DefaultRegion,
@@ -217,7 +218,7 @@ func TryCredentialsFile() sdk.Importer {
 
 			// read profile configuration from config file
 			if configFile != nil {
-				configSection := getConfigSectionByProfile(configFile, profileName)
+				configSection := GetConfigSectionByProfile(configFile, profileName)
 				if configSection != nil {
 					if configSection.HasKey("region") && configSection.Key("region").Value() != "" {
 						fields[fieldname.DefaultRegion] = configSection.Key("region").Value()

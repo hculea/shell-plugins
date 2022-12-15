@@ -1,4 +1,4 @@
-package aws
+package credentials
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type awsProvisioner struct {
 func AWSProvisioner() sdk.Provisioner {
 	return awsProvisioner{
 		envVarProvisioner: provision.EnvVarProvisioner{
-			Schema: defaultEnvVarMapping,
+			Schema: DefaultEnvVarMapping,
 		},
 	}
 }
