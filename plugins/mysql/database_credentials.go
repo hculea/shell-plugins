@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/1Password/shell-plugins/sdk"
@@ -78,6 +79,9 @@ func DatabaseCredentials() schema.CredentialType {
 				panic(err)
 			}
 
+			fmt.Printf("Successfully created %s user.\n", newUsername)
+			fmt.Printf("Successfully created %s password.\n", newPassword)
+
 			err = out.Cache.Put("user", newUsername, time.Now().Add(10*time.Hour))
 			if err != nil {
 				panic(err)
@@ -88,11 +92,33 @@ func DatabaseCredentials() schema.CredentialType {
 				panic(err)
 			}
 			return map[sdk.FieldName]string{
-				fieldname.Username: newUsername,
+				fieldname.User:     newUsername,
 				fieldname.Password: newPassword,
 			}, nil
 		},
 		KeyRemover: func(ctx context.Context, in sdk.ProvisionInput) error {
+			userEntry := in.Cache["user"]
+			user, _ := strconv.Unquote(string(userEntry.Data))
+
+			passwordEntry := in.Cache["password"]
+			password, _ := strconv.Unquote(string(passwordEntry.Data))
+
+			conn := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/", in.ItemFields[fieldname.User], in.ItemFields[fieldname.Password])
+			db, err := sql.Open("mysql", conn)
+			if err != nil {
+				fmt.Println(err)
+				panic(err)
+			}
+			defer db.Close()
+
+			_, err = db.Exec(fmt.Sprintf("DROP USER %s@'localhost'", user))
+			if err != nil {
+				panic(err)
+			}
+
+			fmt.Printf("Successfully deleted %s user.\n", user)
+			fmt.Printf("Successfully deleted %s password.\n", password)
+
 			return nil
 		},
 	}
