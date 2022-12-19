@@ -64,19 +64,18 @@ func DatabaseCredentials() schema.CredentialType {
 			conn := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/", in.ItemFields[fieldname.User], in.ItemFields[fieldname.Password])
 			db, err := sql.Open("mysql", conn)
 			if err != nil {
-				fmt.Println(err)
-				panic(err)
+				return nil, err
 			}
 			defer db.Close()
 
 			_, err = db.Exec(fmt.Sprintf("CREATE USER %q@localhost IDENTIFIED BY %q", newUsername, newPassword))
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 
 			_, err = db.Exec(fmt.Sprintf("GRANT ALL PRIVILEGES ON * . * TO %q@localhost", newUsername))
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 
 			fmt.Printf("Successfully created %s user.\n", newUsername)
@@ -84,12 +83,12 @@ func DatabaseCredentials() schema.CredentialType {
 
 			err = out.Cache.Put("user", newUsername, time.Now().Add(10*time.Hour))
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 
 			err = out.Cache.Put("password", newPassword, time.Now().Add(10*time.Hour))
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			return map[sdk.FieldName]string{
 				fieldname.User:     newUsername,
@@ -106,14 +105,13 @@ func DatabaseCredentials() schema.CredentialType {
 			conn := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/", in.ItemFields[fieldname.User], in.ItemFields[fieldname.Password])
 			db, err := sql.Open("mysql", conn)
 			if err != nil {
-				fmt.Println(err)
-				panic(err)
+				return err
 			}
 			defer db.Close()
 
 			_, err = db.Exec(fmt.Sprintf("DROP USER %s@'localhost'", user))
 			if err != nil {
-				panic(err)
+				return err
 			}
 
 			fmt.Printf("Successfully deleted %s user.\n", user)
