@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"github.com/1Password/shell-plugins/credentials"
 	"github.com/1Password/shell-plugins/sdk"
 	"github.com/1Password/shell-plugins/sdk/schema"
 )
@@ -13,7 +14,7 @@ func New() schema.Plugin {
 			Homepage: sdk.URL("https://aws.amazon.com/"),
 		},
 		Credentials: []schema.CredentialType{
-			AccessKey(),
+			credentials.AccessKey(),
 		},
 		Executables: []schema.Executable{
 			AWSCLI(),

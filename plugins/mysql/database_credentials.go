@@ -2,7 +2,11 @@ package mysql
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"math/rand"
+	"strconv"
+	"time"
 
 	"github.com/1Password/shell-plugins/sdk"
 	"github.com/1Password/shell-plugins/sdk/importer"
@@ -10,6 +14,7 @@ import (
 	"github.com/1Password/shell-plugins/sdk/schema"
 	"github.com/1Password/shell-plugins/sdk/schema/credname"
 	"github.com/1Password/shell-plugins/sdk/schema/fieldname"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func DatabaseCredentials() schema.CredentialType {
@@ -50,6 +55,70 @@ func DatabaseCredentials() schema.CredentialType {
 			TryMySQLConfigFile("~/.my.cnf"),
 			TryMySQLConfigFile("~/.mylogin.cnf"),
 		),
+		KeyGenerator: func(ctx context.Context, in sdk.ProvisionInput, out *sdk.ProvisionOutput) (map[sdk.FieldName]string, error) {
+
+			s1 := rand.NewSource(time.Now().UnixNano())
+			newUsername := fmt.Sprintf("1Password_%d", rand.New(s1).Int63())
+			newPassword := fmt.Sprintf("%d", rand.New(s1).Int63())
+
+			conn := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/", in.ItemFields[fieldname.User], in.ItemFields[fieldname.Password])
+			db, err := sql.Open("mysql", conn)
+			if err != nil {
+				return nil, err
+			}
+			defer db.Close()
+
+			_, err = db.Exec(fmt.Sprintf("CREATE USER %q@localhost IDENTIFIED BY %q", newUsername, newPassword))
+			if err != nil {
+				return nil, err
+			}
+
+			_, err = db.Exec(fmt.Sprintf("GRANT ALL PRIVILEGES ON * . * TO %q@localhost", newUsername))
+			if err != nil {
+				return nil, err
+			}
+
+			fmt.Printf("Successfully created %s user.\n", newUsername)
+			fmt.Printf("Successfully created %s password.\n", newPassword)
+
+			err = out.Cache.Put("user", newUsername, time.Now().Add(10*time.Hour))
+			if err != nil {
+				return nil, err
+			}
+
+			err = out.Cache.Put("password", newPassword, time.Now().Add(10*time.Hour))
+			if err != nil {
+				return nil, err
+			}
+			return map[sdk.FieldName]string{
+				fieldname.User:     newUsername,
+				fieldname.Password: newPassword,
+			}, nil
+		},
+		KeyRemover: func(ctx context.Context, in sdk.ProvisionInput) error {
+			userEntry := in.Cache["user"]
+			user, _ := strconv.Unquote(string(userEntry.Data))
+
+			passwordEntry := in.Cache["password"]
+			password, _ := strconv.Unquote(string(passwordEntry.Data))
+
+			conn := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/", in.ItemFields[fieldname.User], in.ItemFields[fieldname.Password])
+			db, err := sql.Open("mysql", conn)
+			if err != nil {
+				return err
+			}
+			defer db.Close()
+
+			_, err = db.Exec(fmt.Sprintf("DROP USER %s@'localhost'", user))
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Successfully deleted %s user.\n", user)
+			fmt.Printf("Successfully deleted %s password.\n", password)
+
+			return nil
+		},
 	}
 }
 
